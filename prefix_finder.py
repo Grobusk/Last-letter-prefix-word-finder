@@ -140,4 +140,3 @@ class PrefixWordFinder:
             result.extend(group)
         result.extend(other_words)
         return result
-

@@ -58,4 +58,3 @@ http://localhost:5000
 - The word lists are loaded when the server starts
 - If you add new words to the text files, restart the server to include them
 - The server runs on port 5000 by default
-
