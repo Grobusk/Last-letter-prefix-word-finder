@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prefix Word Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #333;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2c5f7d;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #1a3d52;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+            font-family: 'Times New Roman', serif;
+        }
+        
+        .header .byline {
+            font-size: 0.9em;
+            color: #ccc;
+            margin-top: 5px;
+        }
+        
+        .search-section {
+            padding: 20px;
+            background: #e8f4f8;
+            border-bottom: 2px solid #2c5f7d;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #999;
+            background: white;
+        }
+        
+        input[type="text"]:focus {
+            outline: 2px solid #2c5f7d;
+            border-color: #2c5f7d;
+        }
+        
+        select {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #999;
+            background: white;
+            cursor: pointer;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            background: #2c5f7d;
+            color: white;
+            border: 1px solid #1a3d52;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #3d7ba5;
+        }
+        
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        
+        .results-section {
+            padding: 20px;
+        }
+        
+        .results-header {
+            margin-bottom: 15px;
+            color: #2c5f7d;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .word-item {
+            padding: 8px;
+            background: #f0f7fa;
+            border: 1px solid #b8d4e3;
+            cursor: pointer;
+        }
+        
+        .word-item:hover {
+            background: #d4e8f0;
+            border-color: #2c5f7d;
+        }
+        
+        .load-more {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .load-more button {
+            padding: 10px 30px;
+            font-size: 14px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #2c5f7d;
+            font-size: 16px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            background: #e8f4f8;
+            border-top: 2px solid #2c5f7d;
+            color: #2c5f7d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Prefix Word Finder</h1>
+            <p>Fast word search for Last Letter game</p>
+            <div class="byline">by Grobusk</div>
+        </div>
+        
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="prefixInput" placeholder="Enter prefix to search..." autofocus>
+                <select id="sortSelect">
+                    <option value="none">Alphabetical</option>
+                    <option value="longest">Longest First</option>
+                    <option value="shortest">Shortest First</option>
+                    <option value="random">Random</option>
+                </select>
+                <button onclick="search()">Search</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <input type="text" id="suffixInput" placeholder="Preferred suffixes (comma-separated, e.g. ing, ed, er)" style="width: 100%; max-width: 600px;">
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div id="resultsHeader" class="results-header"></div>
+            <div id="resultsContainer"></div>
+            <div id="loadMoreContainer" class="load-more"></div>
+        </div>
+        <div class="footer">
+            by Grobusk
+        </div>
+    </div>
+    
+    <script>
+        let currentPage = 1;
+        let currentPrefix = '';
+        let currentSort = 'none';
+        let currentSuffixes = '';
+        let isLoading = false;
+        
+        // Allow Enter key to search
+        document.getElementById('prefixInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+        
+        document.getElementById('suffixInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+        
+        function search() {
+            const prefix = document.getElementById('prefixInput').value.trim();
+            const sort = document.getElementById('sortSelect').value;
+            const suffixes = document.getElementById('suffixInput').value.trim();
+            
+            if (!prefix) {
+                alert('Please enter a prefix to search');
+                return;
+            }
+            
+            currentPrefix = prefix;
+            currentSort = sort;
+            currentSuffixes = suffixes;
+            currentPage = 1;
+            
+            loadResults();
+        }
+        
+        function loadResults() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const container = document.getElementById('resultsContainer');
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            
+            if (currentPage === 1) {
+                container.innerHTML = '<div class="loading">Searching...</div>';
+            }
+            
+            let url = `/api/search?prefix=${encodeURIComponent(currentPrefix)}&sort=${currentSort}&page=${currentPage}&per_page=100`;
+            if (currentSuffixes) {
+                url += `&suffixes=${encodeURIComponent(currentSuffixes)}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    isLoading = false;
+                    
+                    if (currentPage === 1) {
+                        container.innerHTML = '';
+                        document.getElementById('resultsHeader').textContent = 
+                            data.total > 0 ? `Found ${data.total.toLocaleString()} word(s)` : 'No words found';
+                    }
+                    
+                    if (data.words.length > 0) {
+                        const grid = document.createElement('div');
+                        grid.className = 'results-grid';
+                        
+                        data.words.forEach(word => {
+                            const item = document.createElement('div');
+                            item.className = 'word-item';
+                            item.textContent = word;
+                            item.onclick = () => {
+                                document.getElementById('prefixInput').value = word;
+                                search();
+                            };
+                            grid.appendChild(item);
+                        });
+                        
+                        container.appendChild(grid);
+                        
+                        if (data.has_more) {
+                            loadMoreContainer.innerHTML = 
+                                `<button onclick="loadMore()">Load More (${data.total - (currentPage * 100)} remaining)</button>`;
+                        } else {
+                            loadMoreContainer.innerHTML = '';
+                        }
+                    } else if (currentPage === 1) {
+                        container.innerHTML = '<div class="no-results">No words found matching your prefix</div>';
+                        loadMoreContainer.innerHTML = '';
+                    }
+                })
+                .catch(error => {
+                    isLoading = false;
+                    console.error('Error:', error);
+                    container.innerHTML = '<div class="no-results">Error loading results. Please try again.</div>';
+                });
+        }
+        
+        function loadMore() {
+            currentPage++;
+            loadResults();
+        }
+    </script>
+</body>
+</html>
+
